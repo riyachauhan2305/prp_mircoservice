@@ -1,0 +1,15 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: auth
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/auth/**
+        - id: transaction
+          uri: http://transaction-service:8082
+          predicates:
+            - Path=/transaction/**

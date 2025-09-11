@@ -1,0 +1,17 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+
+arangodb:
+  host: localhost
+  port: 8529
+  username: root
+  password: password
+
+
+custom:
+  jwtSecret: mySuperSecretKey
+  tokenExpirationMs: 3600000

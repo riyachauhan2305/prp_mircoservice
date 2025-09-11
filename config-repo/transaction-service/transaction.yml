@@ -1,0 +1,12 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: transaction-service
+
+arangodb:
+  host: localhost
+  port: 8529
+  username: root
+  password: password
