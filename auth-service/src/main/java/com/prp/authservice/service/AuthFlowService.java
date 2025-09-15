@@ -36,91 +36,89 @@ public class AuthFlowService {
     @Value("${jwt.expiration.long}")
     private long longExpiry;
 
+    // Request phone OTP
+    public String requestOtp(String phone, HttpServletResponse response) {
+        // Validate phone number length and digits
+        if (phone == null || !phone.matches("\\d{10}")) {
+            return null; // Return null if validation fails
+        }
 
-public String requestOtp(String phone, HttpServletResponse response) {
-    String sessionToken = UUID.randomUUID().toString();
-    otpService.storeOtp(phone, "phone", sessionToken);
+        String sessionToken = UUID.randomUUID().toString();
+        otpService.storeOtp(phone, "phone", sessionToken);
 
-    String jwtSessionToken = jwtService.generateSessionToken(sessionToken, shortExpiry);
-    response.setHeader("Authorization", "Bearer " + jwtSessionToken);
+        String jwtSessionToken = jwtService.generateSessionToken(sessionToken, shortExpiry);
+        response.setHeader("Authorization", "Bearer " + jwtSessionToken);
 
-    return jwtSessionToken;
-}
-
-
-// Verify phone OTP
-public String verifyPhoneOtp(String otp, HttpServletRequest request) {
-    String sessionToken = JwtService.extractSessionToken(request, jwtService);
-    if (sessionToken == null) throw new UnauthorizedException("Invalid or expired session token");
-
-    otpService.verifyOtp(sessionToken, otp, "phone"); // unified verify
-
-    return jwtService.generateAccessToken(sessionToken);
-}
-
-
-
-
-
-
-
-public String sendEmailVerification(String email, HttpServletRequest request, HttpServletResponse response) {
-    String sessionToken = JwtService.extractSessionToken(request, jwtService);
-    if (sessionToken == null) throw new UnauthorizedException("Invalid or expired session token");
-
-    otpService.storeOtp(email, "email", sessionToken);
-
-    String jwtSessionToken = jwtService.generateSessionToken(sessionToken, shortExpiry);
-    response.setHeader("Authorization", "Bearer " + jwtSessionToken);
-
-    return jwtSessionToken;
-}
-
-
-// Verify email OTP
-public String verifyEmailOtp(String otp, HttpServletRequest request) {
-    String sessionToken = JwtService.extractSessionToken(request, jwtService);
-    if (sessionToken == null) throw new UnauthorizedException("Invalid or expired session token");
-
-    otpService.verifyOtp(sessionToken, otp, "email"); // unified verify
-    return jwtService.generateAccessToken(sessionToken);
-}
-
-
-
-public User signup(User user, HttpServletRequest request, HttpServletResponse response) {
-    String sessionToken = JwtService.extractSessionToken(request, jwtService);
-    if (sessionToken == null) throw new UnauthorizedException("Invalid or expired token");
-
-    String phoneVerified = redisTemplate.opsForValue().get("verified:phone:" + sessionToken);
-    String emailVerified = redisTemplate.opsForValue().get("verified:email:" + sessionToken);
-
-    if (!"true".equals(phoneVerified) || !"true".equals(emailVerified)) {
-        throw new RuntimeException("Phone or email not verified yet");
+        return jwtSessionToken;
     }
 
-    User existing = authService.getUserByPhone(user.getPhoneNumber());
-    if (existing != null) throw new UserAlreadyExistsException("User already registered");
+    // Verify phone OTP
+    public String verifyPhoneOtp(String otp, HttpServletRequest request) {
+        String sessionToken = JwtService.extractSessionToken(request, jwtService);
+        if (sessionToken == null)
+            throw new UnauthorizedException("Invalid or expired session token");
 
-    User newUser = new User();
-    newUser.setFullName(user.getFullName());
-    newUser.setPhoneNumber(user.getPhoneNumber());
-    newUser.setEmail(user.getEmail());
-    newUser.setVerified(true);  // Set verified true
-    newUser.setActive(true);    // Set active true
+        otpService.verifyOtp(sessionToken, otp, "phone"); // unified verify
 
-    userRepository.save(newUser);
+        return jwtService.generateAccessToken(sessionToken);
+    }
 
-    String tokenNewUser = jwtService.generateUserToken(newUser.getId(), longExpiry);
-    response.setHeader("Authorization", "Bearer " + tokenNewUser);
+    public String sendEmailVerification(String email, HttpServletRequest request, HttpServletResponse response) {
+        String sessionToken = JwtService.extractSessionToken(request, jwtService);
+        if (sessionToken == null)
+            throw new UnauthorizedException("Invalid or expired session token");
 
-    otpService.deleteOtp(sessionToken, "phone");
-    otpService.deleteOtp(sessionToken, "email");
+        otpService.storeOtp(email, "email", sessionToken);
 
-    return newUser;
-}
+        String jwtSessionToken = jwtService.generateSessionToken(sessionToken, shortExpiry);
+        response.setHeader("Authorization", "Bearer " + jwtSessionToken);
 
+        return jwtSessionToken;
+    }
 
+    // Verify email OTP
+    public String verifyEmailOtp(String otp, HttpServletRequest request) {
+        String sessionToken = JwtService.extractSessionToken(request, jwtService);
+        if (sessionToken == null)
+            throw new UnauthorizedException("Invalid or expired session token");
+
+        otpService.verifyOtp(sessionToken, otp, "email"); // unified verify
+        return jwtService.generateAccessToken(sessionToken);
+    }
+
+    public User signup(User user, HttpServletRequest request, HttpServletResponse response) {
+        String sessionToken = JwtService.extractSessionToken(request, jwtService);
+        if (sessionToken == null)
+            throw new UnauthorizedException("Invalid or expired token");
+
+        String phoneVerified = redisTemplate.opsForValue().get("verified:phone:" + sessionToken);
+        String emailVerified = redisTemplate.opsForValue().get("verified:email:" + sessionToken);
+
+        if (!"true".equals(phoneVerified) || !"true".equals(emailVerified)) {
+            throw new RuntimeException("Phone or email not verified yet");
+        }
+
+        User existing = authService.getUserByPhone(user.getPhoneNumber());
+        if (existing != null)
+            throw new UserAlreadyExistsException("User already registered");
+
+        User newUser = new User();
+        newUser.setFullName(user.getFullName());
+        newUser.setPhoneNumber(user.getPhoneNumber());
+        newUser.setEmail(user.getEmail());
+        newUser.setVerified(true); // Set verified true
+        newUser.setActive(true); // Set active true
+
+        userRepository.save(newUser);
+
+        String tokenNewUser = jwtService.generateUserToken(newUser.getId(), longExpiry);
+        response.setHeader("Authorization", "Bearer " + tokenNewUser);
+
+        otpService.deleteOtp(sessionToken, "phone");
+        otpService.deleteOtp(sessionToken, "email");
+
+        return newUser;
+    }
 
     // -------------------- MPIN -------------------- //
     public void createMpin(String mpin, HttpServletRequest request) {

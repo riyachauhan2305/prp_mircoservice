@@ -3,8 +3,7 @@ package com.prp.authservice.controller;
 import com.prp.authservice.model.ApiResponse;
 import com.prp.authservice.model.User;
 import com.prp.authservice.service.AuthFlowService;
-import com.prp.authservice.service.OtpService;
-import com.prp.authservice.service.JwtService;
+
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,8 +24,6 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthFlowService authFlowService;
-    private final JwtService jwtService;
-    private final OtpService otpService;
 
     // -------------------- HEALTH CHECK -------------------- //
     @GetMapping("/health")
@@ -38,12 +35,22 @@ public class AuthController {
     }
 
     // -------------------- REQUEST PHONE OTP -------------------- //
+
     @PostMapping("/request-otp")
     public ResponseEntity<ApiResponse> requestOtp(@Valid @RequestBody User user,
-                                                  HttpServletResponse response) {
+            HttpServletResponse response) {
 
-        // sessionToken is returned from service
-        String sessionToken = authFlowService.requestOtp(user.getPhoneNumber(), response);
+        String phoneNumber = user.getPhoneNumber();
+
+        String sessionToken = authFlowService.requestOtp(phoneNumber, response);
+
+        if (sessionToken == null) {
+            Map<String, String> errorData = new HashMap<>();
+            errorData.put("phoneNumber", "Phone number must be exactly 10 digits.");
+
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(400, "Invalid phone number", errorData));
+        }
 
         Map<String, String> data = new HashMap<>();
         data.put("sessionToken", sessionToken);
@@ -55,8 +62,8 @@ public class AuthController {
     // -------------------- VERIFY PHONE OTP -------------------- //
     @PostMapping("/verify-phone-otp")
     public ResponseEntity<ApiResponse> verifyPhoneOtp(@Valid @RequestBody User user,
-                                                      HttpServletRequest request,
-                                                      HttpServletResponse response) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
         log.info("Processing verify-phone-otp for phone: {}", user.getPhoneNumber());
 
@@ -74,8 +81,8 @@ public class AuthController {
     // -------------------- SEND EMAIL OTP -------------------- //
     @PostMapping("/send-email-verification")
     public ResponseEntity<ApiResponse> sendEmailVerification(@RequestBody User user,
-                                                            HttpServletRequest request,
-                                                            HttpServletResponse response) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
         String sessionToken = authFlowService.sendEmailVerification(user.getEmail(), request, response);
 
@@ -88,8 +95,8 @@ public class AuthController {
     // -------------------- VERIFY EMAIL OTP -------------------- //
     @PostMapping("/verify-email-otp")
     public ResponseEntity<ApiResponse> verifyEmailOtp(@RequestBody User user,
-                                                      HttpServletRequest request,
-                                                      HttpServletResponse response) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
         String jwtToken = authFlowService.verifyEmailOtp(user.getOtp(), request);
 
@@ -105,8 +112,8 @@ public class AuthController {
     // -------------------- SIGNUP -------------------- //
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse> signup(@Valid @RequestBody User user,
-                                              HttpServletRequest request,
-                                              HttpServletResponse response) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
         User newUser = authFlowService.signup(user, request, response);
 
@@ -117,7 +124,7 @@ public class AuthController {
     // -------------------- MPIN -------------------- //
     @PostMapping("/create-mpin")
     public ResponseEntity<ApiResponse> createMpin(@Valid @RequestBody User user,
-                                                  HttpServletRequest request) {
+            HttpServletRequest request) {
 
         authFlowService.createMpin(user.getMpin(), request);
 
@@ -126,8 +133,8 @@ public class AuthController {
 
     @PostMapping("/verify-mpin")
     public ResponseEntity<ApiResponse> verifyMpin(@Valid @RequestBody User user,
-                                                  HttpServletRequest request,
-                                                  HttpServletResponse response) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
         User verifiedUser = authFlowService.verifyMpin(user.getMpin(), request, response);
 
