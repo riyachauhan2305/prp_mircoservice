@@ -1,0 +1,5 @@
+com\prp\ocrservice\controller\BankStatementController.class
+com\prp\ocrservice\service\SuryaOcrService.class
+com\prp\ocrservice\model\BankTransaction.class
+com\prp\ocrservice\BankStatementOcrServiceApplication.class
+com\prp\ocrservice\service\BankStatementParser.class

@@ -1,15 +1,19 @@
 package com.prp.authservice.service;
 
-import com.prp.authservice.model.User;
-import com.prp.commonconfig.exception.InvalidOtpException;
+// import com.arangodb.entity.UserEntity;
+// import com.prp.authservice.model.User;
+import com.prp.authservice.entity.UserEntity;
+import com.prp.authservice.dto.SignupDto;
+import com.prp.authservice.dto.UserResponseDto;
+import com.prp.authservice.repository.UserRepository;
 import com.prp.commonconfig.exception.UnauthorizedException;
 import com.prp.commonconfig.exception.UserAlreadyExistsException;
-import com.prp.authservice.model.ApiResponse;
-import com.prp.authservice.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +33,7 @@ public class AuthFlowService {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final RedisTemplate<String, String> redisTemplate;
+     private final ModelMapper modelMapper;
 
     @Value("${jwt.expiration.short}")
     private long shortExpiry;
@@ -86,39 +91,96 @@ public class AuthFlowService {
         return jwtService.generateAccessToken(sessionToken);
     }
 
-    public User signup(User user, HttpServletRequest request, HttpServletResponse response) {
-        String sessionToken = JwtService.extractSessionToken(request, jwtService);
-        if (sessionToken == null)
-            throw new UnauthorizedException("Invalid or expired token");
 
-        String phoneVerified = redisTemplate.opsForValue().get("verified:phone:" + sessionToken);
-        String emailVerified = redisTemplate.opsForValue().get("verified:email:" + sessionToken);
+//     //SIgnup
+//     public UserResponseDto signup(SignupDto signupDto, HttpServletRequest request, HttpServletResponse response) {
+//     String sessionToken = JwtService.extractSessionToken(request, jwtService);
+//     if (sessionToken == null)
+//         throw new UnauthorizedException("Invalid or expired token");
 
-        if (!"true".equals(phoneVerified) || !"true".equals(emailVerified)) {
-            throw new RuntimeException("Phone or email not verified yet");
-        }
+//     String phoneVerified = redisTemplate.opsForValue().get("verified:phone:" + sessionToken);
+//     String emailVerified = redisTemplate.opsForValue().get("verified:email:" + sessionToken);
 
-        User existing = authService.getUserByPhone(user.getPhoneNumber());
-        if (existing != null)
-            throw new UserAlreadyExistsException("User already registered");
+//     if (!"true".equals(phoneVerified) || !"true".equals(emailVerified)) {
+//         throw new RuntimeException("Phone or email not verified yet");
+//     }
 
-        User newUser = new User();
-        newUser.setFullName(user.getFullName());
-        newUser.setPhoneNumber(user.getPhoneNumber());
-        newUser.setEmail(user.getEmail());
-        newUser.setVerified(true); // Set verified true
-        newUser.setActive(true); // Set active true
+//     UserEntity existing = authService.getUserByPhone(signupDto.getPhoneNumber());
+//     if (existing != null)
+//         throw new UserAlreadyExistsException("User already registered");
 
-        userRepository.save(newUser);
+//     UserEntity newUser = new UserEntity();
+//     newUser.setFullName(signupDto.getFullName());
+//     newUser.setPhoneNumber(signupDto.getPhoneNumber());
+//     newUser.setEmail(signupDto.getEmail());
+//     newUser.setVerified(true);
+//     newUser.setActive(true);
 
-        String tokenNewUser = jwtService.generateUserToken(newUser.getId(), longExpiry);
-        response.setHeader("Authorization", "Bearer " + tokenNewUser);
+//     userRepository.save(newUser);
 
-        otpService.deleteOtp(sessionToken, "phone");
-        otpService.deleteOtp(sessionToken, "email");
+//     String tokenNewUser = jwtService.generateUserToken(newUser.getId(), longExpiry);
+//     response.setHeader("Authorization", "Bearer " + tokenNewUser);
 
-        return newUser;
+//     otpService.deleteOtp(sessionToken, "phone");
+//     otpService.deleteOtp(sessionToken, "email");
+
+//     return modelMapper.map(newUser, UserResponseDto.class);
+// }
+
+
+// Signup
+public UserResponseDto signup(SignupDto signupDto, HttpServletRequest request, HttpServletResponse response) {
+    System.out.println("=== START SIGNUP ===");
+
+    String sessionToken = JwtService.extractSessionToken(request, jwtService);
+    System.out.println("Extracted sessionToken: " + sessionToken);
+    if (sessionToken == null) {
+        System.out.println("Session token is null -> unauthorized");
+        throw new UnauthorizedException("Invalid or expired token");
     }
+
+    String phoneVerified = redisTemplate.opsForValue().get("verified:phone:" + sessionToken);
+    String emailVerified = redisTemplate.opsForValue().get("verified:email:" + sessionToken);
+    System.out.println("Phone verified: " + phoneVerified);
+    System.out.println("Email verified: " + emailVerified);
+
+    if (!"true".equals(phoneVerified) || !"true".equals(emailVerified)) {
+        System.out.println("Either phone or email not verified, throwing exception");
+        throw new RuntimeException("Phone or email not verified yet");
+    }
+
+    UserEntity existing = authService.getUserByPhone(signupDto.getPhoneNumber());
+    System.out.println("Existing user found: " + (existing != null));
+    if (existing != null) {
+        throw new UserAlreadyExistsException("User already registered");
+    }
+
+    UserEntity newUser = new UserEntity();
+    newUser.setFullName(signupDto.getFullName());
+    newUser.setPhoneNumber(signupDto.getPhoneNumber());
+    newUser.setEmail(signupDto.getEmail());
+    newUser.setVerified(true);
+    newUser.setActive(true);
+
+    userRepository.save(newUser);
+    System.out.println("Saved new user with ID: " + newUser.getId());
+
+    String tokenNewUser = jwtService.generateUserToken(newUser.getId(), longExpiry);
+    response.setHeader("Authorization", "Bearer " + tokenNewUser);
+    System.out.println("Generated JWT token for new user");
+
+    otpService.deleteOtp(sessionToken, "phone");
+    otpService.deleteOtp(sessionToken, "email");
+    System.out.println("Deleted OTPs from Redis");
+
+    UserResponseDto userResponse = modelMapper.map(newUser, UserResponseDto.class);
+    System.out.println("Mapped newUser to UserResponseDto: " + userResponse);
+
+    System.out.println("=== END SIGNUP ===");
+    return userResponse;
+}
+
+
 
     // -------------------- MPIN -------------------- //
     public void createMpin(String mpin, HttpServletRequest request) {
@@ -127,17 +189,18 @@ public class AuthFlowService {
             throw new UnauthorizedException("Unauthorized: Invalid or expired token");
         }
 
-        User user = authService.getUserById(userId);
+        UserEntity user = authService.getUserById(userId);
         authService.updateMpin(user, mpin);
     }
 
-    public User verifyMpin(String mpin, HttpServletRequest request, HttpServletResponse response) {
+    public UserResponseDto verifyMpin(String mpin, HttpServletRequest request, HttpServletResponse response) {
         String userId = JwtService.extractUserIdFromToken(request, jwtService);
         if (userId == null) {
             throw new UnauthorizedException("Unauthorized: Invalid or expired token");
         }
 
-        User user = authService.getUserById(userId);
+        UserEntity user = authService.getUserById(userId);
+
         if (!authService.verifyMpin(user, mpin)) {
             throw new UnauthorizedException("Invalid MPIN");
         }
@@ -145,7 +208,8 @@ public class AuthFlowService {
         String accessToken = jwtService.generateUserToken(user.getId(), longExpiry);
         response.setHeader("Authorization", "Bearer " + accessToken);
 
-        return user;
+        // ✅ Map UserEntity → UserResponseDto
+        return modelMapper.map(user, UserResponseDto.class);
     }
 
     // -------------------- LOGOUT -------------------- //

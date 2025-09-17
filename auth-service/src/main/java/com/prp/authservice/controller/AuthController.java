@@ -1,15 +1,16 @@
 package com.prp.authservice.controller;
 
+import com.prp.authservice.dto.*;
 import com.prp.authservice.model.ApiResponse;
-import com.prp.authservice.model.User;
 import com.prp.authservice.service.AuthFlowService;
-
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,14 +36,11 @@ public class AuthController {
     }
 
     // -------------------- REQUEST PHONE OTP -------------------- //
-
     @PostMapping("/request-otp")
-    public ResponseEntity<ApiResponse> requestOtp(@Valid @RequestBody User user,
-            HttpServletResponse response) {
+    public ResponseEntity<ApiResponse> requestOtp(@Valid @RequestBody RequestOtpDto requestOtpDto,
+                                                   HttpServletResponse response) {
 
-        String phoneNumber = user.getPhoneNumber();
-
-        String sessionToken = authFlowService.requestOtp(phoneNumber, response);
+        String sessionToken = authFlowService.requestOtp(requestOtpDto.getPhoneNumber(), response);
 
         if (sessionToken == null) {
             Map<String, String> errorData = new HashMap<>();
@@ -61,15 +59,14 @@ public class AuthController {
 
     // -------------------- VERIFY PHONE OTP -------------------- //
     @PostMapping("/verify-phone-otp")
-    public ResponseEntity<ApiResponse> verifyPhoneOtp(@Valid @RequestBody User user,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+    public ResponseEntity<ApiResponse> verifyPhoneOtp(@Valid @RequestBody VerifyOtpDto verifyOtpDto,
+                                                       HttpServletRequest request,
+                                                       HttpServletResponse response) {
 
-        log.info("Processing verify-phone-otp for phone: {}", user.getPhoneNumber());
+        log.info("Processing verify-phone-otp");
 
-        String jwtToken = authFlowService.verifyPhoneOtp(user.getOtp(), request);
+        String jwtToken = authFlowService.verifyPhoneOtp(verifyOtpDto.getOtp(), request);
 
-        // JWT in header
         response.setHeader("Authorization", "Bearer " + jwtToken);
 
         Map<String, String> data = new HashMap<>();
@@ -80,11 +77,11 @@ public class AuthController {
 
     // -------------------- SEND EMAIL OTP -------------------- //
     @PostMapping("/send-email-verification")
-    public ResponseEntity<ApiResponse> sendEmailVerification(@RequestBody User user,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+    public ResponseEntity<ApiResponse> sendEmailVerification(@Valid @RequestBody RequestEmailOtpDto requestEmailOtpDto,
+                                                             HttpServletRequest request,
+                                                             HttpServletResponse response) {
 
-        String sessionToken = authFlowService.sendEmailVerification(user.getEmail(), request, response);
+        String sessionToken = authFlowService.sendEmailVerification(requestEmailOtpDto.getEmail(), request, response);
 
         Map<String, String> data = new HashMap<>();
         data.put("sessionToken", sessionToken);
@@ -94,28 +91,24 @@ public class AuthController {
 
     // -------------------- VERIFY EMAIL OTP -------------------- //
     @PostMapping("/verify-email-otp")
-    public ResponseEntity<ApiResponse> verifyEmailOtp(@RequestBody User user,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+    public ResponseEntity<ApiResponse> verifyEmailOtp(@Valid @RequestBody VerifyEmailOtpDto verifyEmailOtpDto,
+                                                       HttpServletRequest request,
+                                                       HttpServletResponse response) {
 
-        String jwtToken = authFlowService.verifyEmailOtp(user.getOtp(), request);
-
-        // JWT in header
+        String jwtToken = authFlowService.verifyEmailOtp(verifyEmailOtpDto.getOtp(), request);
         response.setHeader("Authorization", "Bearer " + jwtToken);
-
         Map<String, String> data = new HashMap<>();
         data.put("accessToken", jwtToken);
-
         return ResponseEntity.ok(new ApiResponse(200, "Email OTP verified successfully", data));
     }
 
     // -------------------- SIGNUP -------------------- //
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse> signup(@Valid @RequestBody User user,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+    public ResponseEntity<ApiResponse> signup(@Valid @RequestBody SignupDto signupDto,
+                                               HttpServletRequest request,
+                                               HttpServletResponse response) {
 
-        User newUser = authFlowService.signup(user, request, response);
+        UserResponseDto newUser = authFlowService.signup(signupDto, request, response);
 
         return ResponseEntity.status(201)
                 .body(new ApiResponse(201, "User created successfully", newUser));
@@ -123,20 +116,20 @@ public class AuthController {
 
     // -------------------- MPIN -------------------- //
     @PostMapping("/create-mpin")
-    public ResponseEntity<ApiResponse> createMpin(@Valid @RequestBody User user,
-            HttpServletRequest request) {
+    public ResponseEntity<ApiResponse> createMpin(@Valid @RequestBody CreateMpinDto createMpinDto,
+                                                   HttpServletRequest request) {
 
-        authFlowService.createMpin(user.getMpin(), request);
+        authFlowService.createMpin(createMpinDto.getMpin(), request);
 
         return ResponseEntity.ok(new ApiResponse(200, "MPIN created successfully", null));
     }
 
     @PostMapping("/verify-mpin")
-    public ResponseEntity<ApiResponse> verifyMpin(@Valid @RequestBody User user,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+    public ResponseEntity<ApiResponse> verifyMpin(@Valid @RequestBody VerifyMpinDto verifyMpinDto,
+                                                   HttpServletRequest request,
+                                                   HttpServletResponse response) {
 
-        User verifiedUser = authFlowService.verifyMpin(user.getMpin(), request, response);
+        UserResponseDto verifiedUser = authFlowService.verifyMpin(verifyMpinDto.getMpin(), request, response);
 
         return ResponseEntity.ok(new ApiResponse(200, "MPIN verified successfully", verifiedUser));
     }

@@ -23,7 +23,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints
-                .requestMatchers("/api/auth/signup","/api/auth/request-otp", "/api/auth/verify-phone-otp","/api/auth/verify-email-otp", "/error").permitAll()
+                // .requestMatchers("/api/auth/signup","/api/auth/request-otp", "/api/auth/verify-phone-otp","/api/auth/verify-email-otp", "/error").permitAll()
+                 .requestMatchers("api/auth/health","/api/auth/signup","/api/auth/request-otp", "/api/auth/verify-phone-otp","/api/auth/send-email-verification","/api/auth/verify-email-otp", "/error").permitAll()
                 // Signup requires JWT issued after OTP verification
                 .requestMatchers("/api/auth/signup").authenticated()
                 .anyRequest().authenticated())

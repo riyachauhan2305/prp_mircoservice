@@ -1,7 +1,8 @@
 package com.prp.authservice.service;
 
 import com.prp.commonconfig.exception.UserAlreadyExistsException;
-import com.prp.authservice.model.User;
+// import com.prp.authservice.model.User;
+import com.prp.authservice.entity.UserEntity;
 import com.prp.authservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -14,11 +15,11 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bcryptPasswordEncoder;
 
-    public User signup(String fullName, String phoneNumber) {
+    public UserEntity signup(String fullName, String phoneNumber) {
         userRepository.findByPhoneNumber(phoneNumber)
                 .ifPresent(u -> { throw new UserAlreadyExistsException("User already exists with this phone number"); });
 
-        User user = User.builder()
+        UserEntity user = UserEntity.builder()
                 .fullName(fullName)
                 .phoneNumber(phoneNumber)
                 .verified(true)
@@ -27,20 +28,20 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    public User getUserByPhone(String phoneNumber) {
+    public UserEntity getUserByPhone(String phoneNumber) {
         return userRepository.findByPhoneNumber(phoneNumber).orElse(null);
     }
 
-    public User getUserById(String id) {
+    public UserEntity getUserById(String id) {
         return userRepository.findById(id).orElse(null);
     }
 
-    public void updateMpin(User user, String rawMpin) {
+    public void updateMpin(UserEntity user, String rawMpin) {
         user.setMpin(bcryptPasswordEncoder.encode(rawMpin));
         userRepository.save(user);
     }
 
-    public boolean verifyMpin(User user, String rawMpin) {
+    public boolean verifyMpin(UserEntity user, String rawMpin) {
         return bcryptPasswordEncoder.matches(rawMpin, user.getMpin());
     }
 }
